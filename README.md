@@ -1,14 +1,25 @@
 # mapreduce-c
 
-A single-machine implementation of the MapReduce paper, written from scratch in C.
-A coordinator process dispatches map and reduce tasks to N workers over a custom
-length-prefixed TCP protocol. Workers crash, time out, or come back; the
-coordinator reassigns. The coordinator itself can be killed mid-job — it replays
-an append-only log on restart and picks up where it left off.
+*The MapReduce paper, rebuilt from scratch in C — the fault tolerance, not just word count.*
 
-~3.6K lines of C. No dependencies beyond libc.
+A single-machine implementation of MapReduce. A coordinator dispatches map and
+reduce tasks to N workers over a custom length-prefixed TCP protocol. Workers
+crash, time out, or come back; the coordinator reassigns. The coordinator itself
+can be killed mid-job — it replays an append-only log on restart and picks up
+where it left off. ~3.6K lines of C, no dependencies beyond libc.
 
-## Running it
+**What's interesting here:**
+
+- [Crash recovery](#crash-recovery) — the coordinator survives `kill -9` by
+  replaying a CRC-checked append-only log
+- [Attempt IDs make timeouts safe](#wire-format) — a zombie worker's stale
+  completion can't poison fresh state
+- [Four-state task machine](#task-lifecycle) — failure is a counter, not a new
+  object per attempt
+- [At-least-once, deduplicated by naming](#crash-recovery) — atomic `rename`
+  makes a re-run produce byte-identical output
+
+## Demo
 
 ```sh
 make                          # builds ./master and ./worker
